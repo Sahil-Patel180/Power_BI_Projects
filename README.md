@@ -13,10 +13,21 @@ Each project demonstrates the process of transforming raw data into meaningful i
 * **File:** `[AdventureWorks Report.pbix](AdventureWorks%20Report.pbix)`
 * **Description:** This project is a comprehensive sales dashboard built using the Microsoft AdventureWorks sample database.
 * **Key Features:**
-    * Analysis of sales performance over time.
-    * Breakdown of revenue by product category, subcategory, and region.
-    * Insights into customer demographics and purchasing behavior.
-    * Interactive slicers and filters allowing for dynamic data exploration.
+    * Analysis of sales performance over time
+    * Breakdown of revenue by product category, subcategory & region
+    * Insights into customer demographics & purchasing behavior
+    * Interactive slicers & filters allowing for dynamic data exploration
+
+### 2. Forage PwC Power BI Job Simulation
+
+* **File:** `[Forage PwC Power BI](Forage%20PwC%20Power%20BI)`
+* **Description:** This project is a virtual case study from Forage, sponsored by PwC. It involves analyzing a dataset (such as client call center data & HR data) to identify key insights and build a Power BI dashboard to present findings.
+* **Key Features:**
+    * End-to-end Power Query data cleaning, transformation & modelling
+    * Dashboard showcasing KPIs such as complaint volume, case resolution time & issue categories
+    * Trend analysis to identify patterns across regions, customer types & complaint types
+    * Performance insights using DAX measures
+    * Fully interactive visuals including slicers, drill-downs & tooltips for dynamic exploration
 
 ---
 
