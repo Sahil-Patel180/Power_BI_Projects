@@ -1,0 +1,321 @@
+// =============================================================================
+// F1 Race Analytics - DAX measures
+// =============================================================================
+// Fastest way to add them all (Power BI Desktop, 2024 or later):
+//   1. Create an empty table: Home > Enter data > name it _Measures > Load.
+//   2. Open DAX query view (left bar, 4th icon), paste this whole file.
+//   3. Click "Update model with changes" (above the query). Every DEFINE MEASURE
+//      below is added to _Measures in one step. Then run it (F5) once to check.
+//   4. Optional: delete the default "Column1" from _Measures; it becomes the
+//      measures-only table with the calculator icon.
+//
+// Rules the measures follow:
+//   - Results flags are INT 0/1 in gold, so SUM counts them.
+//   - Race-only counts filter fact_results[session_type] = "Race"; points include sprints.
+//   - Standings are snapshots: take the value at the latest round in context,
+//     never SUM across rounds.
+// =============================================================================
+
+DEFINE
+
+    // ---------------------------------------------------------------- Results
+    MEASURE _Measures[Race Entries] =
+        CALCULATE ( COUNTROWS ( fact_results ), fact_results[session_type] = "Race" )
+
+    MEASURE _Measures[Race Starts] =
+        CALCULATE ( SUM ( fact_results[is_started] ), fact_results[session_type] = "Race" )
+
+    MEASURE _Measures[Wins] =
+        CALCULATE ( SUM ( fact_results[is_win] ), fact_results[session_type] = "Race" )
+
+    MEASURE _Measures[Podiums] =
+        CALCULATE ( SUM ( fact_results[is_podium] ), fact_results[session_type] = "Race" )
+
+    MEASURE _Measures[DNFs] =
+        CALCULATE ( SUM ( fact_results[is_dnf] ), fact_results[session_type] = "Race" )
+
+    MEASURE _Measures[Points Finishes] =
+        CALCULATE ( SUM ( fact_results[is_points_finish] ), fact_results[session_type] = "Race" )
+
+    MEASURE _Measures[Fastest Laps] =
+        CALCULATE ( SUM ( fact_results[is_fastest_lap] ), fact_results[session_type] = "Race" )
+
+    MEASURE _Measures[Sprint Wins] =
+        CALCULATE ( SUM ( fact_results[is_win] ), fact_results[session_type] = "Sprint" )
+
+    MEASURE _Measures[Points] =
+        SUM ( fact_results[points] )
+
+    MEASURE _Measures[Race Points] =
+        CALCULATE ( SUM ( fact_results[points] ), fact_results[session_type] = "Race" )
+
+    MEASURE _Measures[Sprint Points] =
+        CALCULATE ( SUM ( fact_results[points] ), fact_results[session_type] = "Sprint" )
+
+    MEASURE _Measures[Win Rate] =
+        DIVIDE ( [Wins], [Race Starts] )
+
+    MEASURE _Measures[Podium Rate] =
+        DIVIDE ( [Podiums], [Race Starts] )
+
+    MEASURE _Measures[DNF Rate] =
+        DIVIDE ( [DNFs], [Race Starts] )
+
+    MEASURE _Measures[Points per Start] =
+        DIVIDE ( [Points], [Race Starts] )
+
+    MEASURE _Measures[Avg Finish] =
+        CALCULATE ( AVERAGE ( fact_results[finish_position] ), fact_results[session_type] = "Race" )
+
+    MEASURE _Measures[Avg Grid] =
+        CALCULATE (
+            AVERAGE ( fact_results[grid_position] ),
+            fact_results[session_type] = "Race",
+            fact_results[grid_position] > 0
+        )
+
+    MEASURE _Measures[Positions Gained] =
+        CALCULATE ( SUM ( fact_results[positions_gained] ), fact_results[session_type] = "Race" )
+
+    MEASURE _Measures[Avg Positions Gained] =
+        CALCULATE ( AVERAGE ( fact_results[positions_gained] ), fact_results[session_type] = "Race" )
+
+    MEASURE _Measures[Best Finish] =
+        CALCULATE ( MIN ( fact_results[finish_position] ), fact_results[session_type] = "Race" )
+
+    // Single race + driver context (tables, tooltips): the finishing position or reason code.
+    MEASURE _Measures[Result] =
+        CALCULATE ( SELECTEDVALUE ( fact_results[position_text] ), fact_results[session_type] = "Race" )
+
+    MEASURE _Measures[Grid] =
+        CALCULATE ( SELECTEDVALUE ( fact_results[grid_position] ), fact_results[session_type] = "Race" )
+
+    // ---------------------------------------------------------------- Counts
+    MEASURE _Measures[Races Held] =
+        CALCULATE ( COUNTROWS ( dim_race ), dim_race[is_completed] = 1 )
+
+    MEASURE _Measures[Drivers] =
+        CALCULATE ( DISTINCTCOUNT ( fact_results[driver_id] ), fact_results[session_type] = "Race" )
+
+    MEASURE _Measures[Constructors] =
+        CALCULATE ( DISTINCTCOUNT ( fact_results[constructor_id] ), fact_results[session_type] = "Race" )
+
+    MEASURE _Measures[Winners] =
+        CALCULATE (
+            DISTINCTCOUNT ( fact_results[driver_id] ),
+            fact_results[session_type] = "Race",
+            fact_results[is_win] = 1
+        )
+
+    // ---------------------------------------------------------------- Qualifying (1994+)
+    MEASURE _Measures[Poles] =
+        SUM ( fact_qualifying[is_pole] )
+
+    MEASURE _Measures[Avg Quali Position] =
+        AVERAGE ( fact_qualifying[quali_position] )
+
+    MEASURE _Measures[Q3 Rate] =
+        DIVIDE ( SUM ( fact_qualifying[reached_q3] ), COUNTROWS ( fact_qualifying ) )
+
+    MEASURE _Measures[Avg Gap to Fastest (s)] =
+        DIVIDE ( AVERAGE ( fact_qualifying[gap_to_fastest_ms] ), 1000 )
+
+    // ---------------------------------------------------------------- Championship (snapshots)
+    // Points at the latest round in context, evaluated per season so a multi-season
+    // selection adds up each season's final total.
+    MEASURE _Measures[Championship Points] =
+        SUMX (
+            VALUES ( dim_season[season_year] ),
+            VAR LastRound = CALCULATE ( MAX ( fact_driver_standings[round] ) )
+            RETURN
+                CALCULATE (
+                    SUM ( fact_driver_standings[championship_points] ),
+                    fact_driver_standings[round] = LastRound
+                )
+        )
+
+    // Meaningful for a single season.
+    MEASURE _Measures[Championship Position] =
+        VAR LastRound = CALCULATE ( MAX ( fact_driver_standings[round] ) )
+        RETURN
+            CALCULATE (
+                MIN ( fact_driver_standings[championship_position] ),
+                fact_driver_standings[round] = LastRound
+            )
+
+    MEASURE _Measures[Constructor Championship Points] =
+        SUMX (
+            VALUES ( dim_season[season_year] ),
+            VAR LastRound = CALCULATE ( MAX ( fact_constructor_standings[round] ) )
+            RETURN
+                CALCULATE (
+                    SUM ( fact_constructor_standings[championship_points] ),
+                    fact_constructor_standings[round] = LastRound
+                )
+        )
+
+    MEASURE _Measures[Constructor Championship Position] =
+        VAR LastRound = CALCULATE ( MAX ( fact_constructor_standings[round] ) )
+        RETURN
+            CALCULATE (
+                MIN ( fact_constructor_standings[championship_position] ),
+                fact_constructor_standings[round] = LastRound
+            )
+
+    // Name of the champion (completed season) or current leader (season in progress).
+    MEASURE _Measures[Champion] =
+        VAR ChampionIds =
+            CALCULATETABLE (
+                VALUES ( agg_driver_season[driver_id] ),
+                agg_driver_season[final_position] = 1
+            )
+        RETURN
+            CONCATENATEX (
+                ChampionIds,
+                LOOKUPVALUE ( dim_driver[full_name], dim_driver[driver_id], agg_driver_season[driver_id] ),
+                ", "
+            )
+
+    MEASURE _Measures[Champion Label] =
+        VAR Complete =
+            CALCULATE ( MAX ( agg_driver_season[is_season_complete] ), agg_driver_season[final_position] = 1 )
+        RETURN
+            IF ( Complete = 1, "Champion", "Leader" )
+
+    MEASURE _Measures[Titles] =
+        SUM ( agg_driver_season[is_champion] )
+
+    // ---------------------------------------------------------------- Pit stops (1994+) and laps (1996+)
+    MEASURE _Measures[Pit Stops] =
+        COUNTROWS ( fact_pit_stops )
+
+    MEASURE _Measures[Avg Pit Stop (s)] =
+        DIVIDE (
+            CALCULATE ( AVERAGE ( fact_pit_stops[duration_ms] ), fact_pit_stops[is_long_stop] = 0 ),
+            1000
+        )
+
+    MEASURE _Measures[Fastest Pit Stop (s)] =
+        DIVIDE (
+            CALCULATE ( MIN ( fact_pit_stops[duration_ms] ), fact_pit_stops[is_long_stop] = 0 ),
+            1000
+        )
+
+    MEASURE _Measures[Stops per Driver] =
+        DIVIDE ( [Pit Stops], DISTINCTCOUNT ( fact_pit_stops[driver_id] ) )
+
+    MEASURE _Measures[Avg Lap (s)] =
+        DIVIDE ( AVERAGE ( fact_lap_times[lap_time_ms] ), 1000 )
+
+    MEASURE _Measures[Best Lap (s)] =
+        DIVIDE ( MIN ( fact_lap_times[lap_time_ms] ), 1000 )
+
+    MEASURE _Measures[Best Lap] =
+        VAR ms = MIN ( fact_lap_times[lap_time_ms] )
+        RETURN
+            IF (
+                NOT ISBLANK ( ms ),
+                FORMAT ( INT ( ms / 60000 ), "0" ) & ":" & FORMAT ( MOD ( ms, 60000 ) / 1000, "00.000" )
+            )
+
+    // Running position at the end of each lap (lap chart: axis = lap, legend = driver).
+    MEASURE _Measures[Lap Position] =
+        MIN ( fact_lap_times[position] )
+
+    // ---------------------------------------------------------------- Machine learning (f1-analytics-ml)
+    MEASURE _Measures[Podium Probability] =
+        CALCULATE ( AVERAGE ( ml_predictions[probability] ), ml_predictions[model_name] = "podium" )
+
+    MEASURE _Measures[DNF Risk] =
+        CALCULATE ( AVERAGE ( ml_predictions[probability] ), ml_predictions[model_name] = "dnf" )
+
+    MEASURE _Measures[Predicted Positions Gained] =
+        CALCULATE ( AVERAGE ( ml_predictions[predicted_value] ), ml_predictions[model_name] = "positions_gained" )
+
+    MEASURE _Measures[Predicted Pit Stop (s)] =
+        DIVIDE (
+            CALCULATE ( AVERAGE ( ml_predictions[predicted_value] ), ml_predictions[model_name] = "pit_stop_ms" ),
+            1000
+        )
+
+    MEASURE _Measures[Predicted Stops] =
+        CALCULATE ( SELECTEDVALUE ( ml_predictions[predicted_class] ), ml_predictions[model_name] = "pit_stop_class" )
+
+    // Raw score of the finish-order model (lower = further forward).
+    MEASURE _Measures[Predicted Finish Score] =
+        CALCULATE ( AVERAGE ( ml_predictions[predicted_value] ), ml_predictions[model_name] = "finish_position" )
+
+    // Predicted finishing order inside one race (use with a single race selected).
+    MEASURE _Measures[Predicted Finish Rank] =
+        VAR Score = [Predicted Finish Score]
+        RETURN
+            IF (
+                NOT ISBLANK ( Score ),
+                RANKX (
+                    FILTER ( ALLSELECTED ( dim_driver ), NOT ISBLANK ( [Predicted Finish Score] ) ),
+                    [Predicted Finish Score],
+                    ,
+                    ASC,
+                    DENSE
+                )
+            )
+
+    // Share of each race's three most likely podium finishers who really were on the podium.
+    MEASURE _Measures[Top-3 Pick Hit Rate] =
+        AVERAGEX (
+            FILTER ( VALUES ( dim_race[race_id] ), NOT ISBLANK ( [Podium Probability] ) ),
+            VAR Preds =
+                CALCULATETABLE (
+                    ADDCOLUMNS (
+                        VALUES ( ml_predictions[driver_id] ),
+                        "@p", CALCULATE ( AVERAGE ( ml_predictions[probability] ) )
+                    ),
+                    ml_predictions[model_name] = "podium",
+                    REMOVEFILTERS ( dim_driver )
+                )
+            VAR Top3 = TOPN ( 3, Preds, [@p], DESC )
+            VAR Hits =
+                SUMX (
+                    Top3,
+                    CALCULATE (
+                        SUM ( fact_results[is_podium] ),
+                        fact_results[session_type] = "Race",
+                        TREATAS ( { ml_predictions[driver_id] }, dim_driver[driver_id] )
+                    )
+                )
+            RETURN DIVIDE ( Hits, 3 )
+        )
+
+    // Model evaluation table (ml_model_metrics)
+    MEASURE _Measures[Model Value] =
+        SELECTEDVALUE ( ml_model_metrics[model_value] )
+
+    MEASURE _Measures[Baseline Value] =
+        SELECTEDVALUE ( ml_model_metrics[baseline_value] )
+
+    MEASURE _Measures[Models Beating Baseline] =
+        CALCULATE ( DISTINCTCOUNT ( ml_model_metrics[model_name] ), ml_model_metrics[beats_baseline] = TRUE () )
+
+    // ---------------------------------------------------------------- LLM narratives
+    MEASURE _Measures[Race Recap] =
+        CALCULATE ( MAX ( narr_race[narrative_text] ), narr_race[narrative_type] = "race_recap" )
+
+    MEASURE _Measures[Prediction Explanation] =
+        CALCULATE ( MAX ( narr_race[narrative_text] ), narr_race[narrative_type] = "prediction" )
+
+    MEASURE _Measures[Driver Season Summary] =
+        MAX ( narr_driver_season[narrative_text] )
+
+    MEASURE _Measures[Narrative Source] =
+        VAR m = CALCULATE ( MAX ( narr_race[llm_model] ), narr_race[narrative_type] = "race_recap" )
+        RETURN IF ( NOT ISBLANK ( m ), "Written by " & m & ", every number checked against the warehouse" )
+
+    // ---------------------------------------------------------------- Titles for visuals
+    MEASURE _Measures[Selected Season] =
+        IF ( HASONEVALUE ( dim_season[season_year] ), "Season " & VALUES ( dim_season[season_year] ), "All seasons" )
+
+    MEASURE _Measures[Selected Race] =
+        IF ( HASONEVALUE ( dim_race[race_id] ), VALUES ( dim_race[race_label] ), "Select a race" )
+
+EVALUATE
+    { ( [Races Held], [Wins], [Points], [Championship Points], [Podium Probability] ) }

@@ -1,0 +1,19 @@
+{
+  "name": "F1 Race Analytics",
+  "dataColors": ["#E10600", "#1F1F27", "#00A19C", "#FF8700", "#6692FF", "#B6BABD", "#229971", "#FFD700", "#9B0000", "#5E8FAA"],
+  "good": "#229971",
+  "neutral": "#B6BABD",
+  "bad": "#E10600",
+  "maximum": "#E10600",
+  "center": "#B6BABD",
+  "minimum": "#1F1F27",
+  "background": "#FFFFFF",
+  "foreground": "#15151E",
+  "tableAccent": "#E10600",
+  "textClasses": {
+    "title": { "fontFace": "Segoe UI Semibold", "fontSize": 14, "color": "#15151E" },
+    "header": { "fontFace": "Segoe UI Semibold", "fontSize": 12, "color": "#15151E" },
+    "label": { "fontFace": "Segoe UI", "fontSize": 10, "color": "#38383F" },
+    "callout": { "fontFace": "Segoe UI Semibold", "fontSize": 28, "color": "#15151E" }
+  }
+}
