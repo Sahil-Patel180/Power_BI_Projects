@@ -29,6 +29,16 @@ Each project demonstrates the process of transforming raw data into meaningful i
     * Performance insights using DAX measures
     * Fully interactive visuals including slicers, drill-downs & tooltips for dynamic exploration
 
+### 3. F1 Race Analytics
+
+* **Folder:** [F1 Race Analytics](F1%20Race%20Analytics)
+* **Description:** An 8-page Formula 1 report on a SQL Server star schema (my [F1 Data Warehouse](https://github.com/Sahil-Patel180/SQL_Projects/tree/main/F1%20Data%20Warehouse)), with machine-learning podium predictions and verified local-LLM race recaps from [f1-analytics-ml](https://github.com/Sahil-Patel180/f1-analytics-ml).
+* **Key Features:**
+    * Star schema with a season dimension above races, single-direction relationships only
+    * 60+ DAX measures, including snapshot-safe championship points and a top-3 prediction hit rate
+    * Predictions vs actual results, model-vs-baseline evaluation page
+    * Power Query, relationships, measures and page specs kept as text files for review
+
 ---
 
 ## Tools Used
