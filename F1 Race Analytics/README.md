@@ -63,6 +63,8 @@ Prerequisites: the warehouse loaded in SQL Server (`F1_DB2`), `python -m f1ml.tr
 
 ## Model design notes
 
+   ![Semantic model](images/f1_semantic_model.png)
+
 - **Star schema, single-direction filters.** Dimensions filter facts; no bidirectional relationships, so no ambiguous filter paths.
 - **`dim_season` above `dim_race`.** One season slicer reaches race facts and season-level tables (`agg_driver_season`, driver summaries).
 - **Standings are snapshots.** `[Championship Points]` takes each season's latest round in context instead of summing rounds; summing would count the same points 20+ times.
