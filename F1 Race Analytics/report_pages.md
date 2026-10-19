@@ -28,7 +28,7 @@ IF (
 Driver Season Summary =
 IF (
     HASONEVALUE ( dim_season[season_year] ) && HASONEVALUE ( dim_driver[driver_id] ),
-    MAX ( narr_driver_season[narrative_text] ),
+    COALESCE ( MAX ( narr_driver_season[narrative_text] ), "No summary for this season yet." ),
     "Pick one season to read the summary."
 )
 ```
@@ -109,7 +109,7 @@ Default season: select latest completed season on page 1 before saving; the save
 | Line chart: championship battle | `216, 208, 640, 288` | X `dim_race[round]` (type Categorical), Y `[Championship Points]`, Legend `dim_driver[driver_code]` | Filter pane: `driver_code` Top N 5 by `[Championship Points]`; markers off; legend bottom; title "Championship battle" |
 | Bar: wins by driver | `872, 208, 392, 288` | Y `dim_driver[full_name]`, X `[Wins]` | Top N 10 by `[Wins]`; sort desc; data labels on |
 | Bar: constructors' points | `216, 512, 400, 192` | Y `dim_constructor[constructor_name]`, X `[Constructor Championship Points]` | sort desc; data labels on |
-| Table: race winners | `632, 512, 632, 192` | `dim_race[round]`, `dim_race[race_name]`, `dim_driver[full_name]`, `dim_constructor[constructor_name]` | Visual filters `fact_results[is_win] = 1`, `fact_results[session_type] = Race`; sort by round asc; right-click a row → Drill through → Race Detail |
+| Table: race winners | `632, 512, 632, 192` | `dim_race[round]`, `dim_race[race_label]`, `dim_driver[full_name]`, `dim_constructor[constructor_name]` | Visual filters `fact_results[is_win] = 1`, `fact_results[session_type] = Race`; sort by round asc; right-click a row → Drill through → Race Detail. `race_label` (not `race_name`) must be in the table: drill-through only appears when the source visual holds the target page's drill-through field, and race names repeat across seasons |
 
 ## 2. Driver Profile
 
@@ -123,7 +123,7 @@ Rail: **Driver** slicer in page slot (`dim_driver[full_name]`, Dropdown, search 
 | Card (new): qualifying | `856, 232, 408, 224` | `[Avg Quali Position]`, `[Q3 Rate]`, `[Avg Gap to Fastest (s)]`, `[Avg Grid]` | Grid 2 × 2; title "Qualifying" |
 | Column: finish distribution | `216, 472, 400, 232` | X `fact_results[finish_position]` (Categorical), Y `[Race Entries]` | Visual filters `session_type = Race`, `finish_position` is not blank |
 | Donut: retirement reasons | `632, 472, 280, 232` | Legend `dim_status[status_group]`, Values `[DNFs]` | Filter `status_group` not in Finished, Lapped; detail labels: percent |
-| Text box: season summary | `928, 472, 336, 232` | Insert > Text box > **+ Value** → `Driver Season Summary` | Heading line "Season summary" above; text 10 pt |
+| Text box: season summary | `928, 472, 336, 232` | Insert > Text box > **+ Value** → `Driver Season Summary` | Heading line "Season summary" above; text 10 pt. In the + Value pane check the value points to the measure, not a Q&A guess. Shows a fallback line when no narrative exists |
 
 ## 3. Constructor Profile
 
@@ -140,12 +140,12 @@ Rail: **Constructor** slicer in page slot (`dim_constructor[constructor_name]`, 
 
 ## 4. Race Detail
 
-Rail: **Race** slicer in page slot (`dim_race[race_label]`, Dropdown, search on, single select), filtered by synced Season. Drill-through: Visualizations > Build > Drill through > add `dim_race[race_label]`, Keep all filters on. Auto back button appears top-left; move to `1216, 16, 32, 32`.
+Rail: **Race** slicer in page slot (`dim_race[race_label]`, Dropdown, search on, single select), filtered by synced Season. Drill-through: click empty canvas (no visual selected) > Visualizations > Build visual > Drill through > add `dim_race[race_label]`, Keep all filters on, Cross-report off. Auto back button appears top-left; move to `1216, 16, 32, 32`. Save the page with the Race slicer **cleared**: a saved selection is combined with the drill-through filter and can blank the page.
 
 | Visual | Position | Fields | Settings |
 | --- | --- | --- | --- |
 | Card (new): race title | `216, 16, 648, 72` | `[Selected Race]` | callout 22 pt, no label |
-| Multi-row card: race info | `880, 16, 384, 72` | `dim_circuit[circuit_name]`, `dim_race[race_date]`, `[Best Lap]` (rename on visual: "Fastest lap") | |
+| Card (new): race info | `880, 16, 384, 72` | `[Circuit Name]`, `[Race Date]`, `[Best Lap]` (rename on visual: "Fastest lap") | Measures, not raw columns (columns show as "First circuit_name"). Layout single row, 3 cards; callout 12–14 pt left aligned; label 9 pt grey, below value; card background, border and accent bar off. The legacy Multi-row card is replaced by Card (new) in current Desktop |
 | Table: classification | `216, 104, 560, 600` | `fact_results[position_order]`, `dim_driver[full_name]`, `dim_constructor[constructor_name]`, `[Grid]`, `[Result]`, `[Positions Gained]`, `[Race Points]`, `[Fastest Laps]`, `[Best Lap]`, `dim_status[status]` | Visual filter `session_type = Race`; sort position_order asc; Cell elements: Positions Gained → Icons (rules: >0 up green, 0 dash grey, <0 down red); Fastest Laps → Background color rule =1 → `#A020F0`, font white |
 | Line: lap chart | `792, 104, 472, 232` | X `fact_lap_times[lap]`, Y `[Lap Position]`, Legend `dim_driver[driver_code]`, Tooltip `[Avg Lap (s)]` (rename "Lap time (s)") | Y Invert range on, min 1; markers off; stroke 2 |
 | Text box: recap | `792, 352, 472, 120` | + Value `Race Recap`; second line + Value `Narrative Source` (8 pt, grey) | |
@@ -156,9 +156,9 @@ Rail: **Race** slicer in page slot (`dim_race[race_label]`, Dropdown, search on,
 
 | Visual | Position | Fields | Settings |
 | --- | --- | --- | --- |
-| Map | `216, 16, 640, 400` | Latitude `dim_circuit[latitude]`, Longitude `dim_circuit[longitude]`, Size `[Races Held]`, Tooltips `dim_circuit[circuit_name]`, `[Avg Positions Gained]` | If map disabled: File > Options > Global > Security > Map and Filled Map visuals on; bubble color `#E10600`; style Grayscale |
+| Map | `216, 16, 640, 400` | Latitude `dim_circuit[latitude]`, Longitude `dim_circuit[longitude]`, Size `[Races Held]`, Tooltips `[Circuits]` (rename "Circuit"), `[Avg Positions Gained]` | `[Circuits]` lists every circuit under a bubble instead of "First circuit_name"; nearby circuits (Albert Park / Adelaide) overlap until zoomed in. If map disabled: File > Options > Global > Security > Map and Filled Map visuals on; bubble color `#E10600`; style Grayscale |
 | Bar: overtaking | `872, 16, 392, 400` | Y `dim_circuit[circuit_name]`, X `[Avg Positions Gained]` | Top N 15; sort desc |
-| Table | `216, 432, 1048, 272` | `dim_circuit[circuit_name]`, `dim_circuit[country]`, `[Races Held]`, `[Avg Positions Gained]`, `[Stops per Driver]`, `[Best Lap]` | Data bars on Avg Positions Gained; note lap data only from 1996 |
+| Table | `216, 432, 1048, 272` | `dim_circuit[circuit_name]`, `dim_circuit[country]`, `[Races Held]`, `[Avg Positions Gained]`, `[Stops per Driver]`, `[Best Lap Display]` (rename "Best lap") | Data bars on Avg Positions Gained. Format > General > Title > Subtitle on: "Best lap: lap-time data available from 1996 onward" (grey, 9 pt). `[Best Lap Display]` is text and sorts alphabetically; add `[Best Lap (s)]` to sort by lap time |
 
 ## 6. Predictions vs Actual
 
