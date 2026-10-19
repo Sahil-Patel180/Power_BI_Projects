@@ -218,6 +218,11 @@ DEFINE
                 FORMAT ( INT ( ms / 60000 ), "0" ) & ":" & FORMAT ( MOD ( ms, 60000 ) / 1000, "00.000" )
             )
 
+    // Text for tables: explains the blank instead of leaving it empty (lap times start in 1996).
+    // Text sorts alphabetically: sort tables by [Best Lap (s)] instead.
+    MEASURE _Measures[Best Lap Display] =
+        COALESCE ( [Best Lap], "n/a (pre-1996)" )
+
     // Running position at the end of each lap (lap chart: axis = lap, legend = driver).
     MEASURE _Measures[Lap Position] =
         MIN ( fact_lap_times[position] )
@@ -315,7 +320,25 @@ DEFINE
 
     MEASURE _Measures[Narrative Source] =
         VAR m = CALCULATE ( MAX ( narr_race[llm_model] ), narr_race[narrative_type] = "race_recap" )
-        RETURN IF ( NOT ISBLANK ( m ), "Written by " & m & ", every number checked against the warehouse" )
+        RETURN
+            SWITCH (
+                TRUE (),
+                ISBLANK ( m ), BLANK (),
+                m = "template-fallback", "Built from a template: the model's text failed the fact check",
+                "Written by " & m & ", every number checked against the warehouse"
+            )
+
+    // ---------------------------------------------------------------- Race and circuit info
+    // Card (new) shows raw text columns as "First circuit_name"; these measures give clean labels.
+    MEASURE _Measures[Circuit Name] =
+        SELECTEDVALUE ( dim_circuit[circuit_name] )
+
+    MEASURE _Measures[Race Date] =
+        FORMAT ( SELECTEDVALUE ( dim_race[race_date] ), "dd mmm yyyy" )
+
+    // Map tooltip: every circuit under the bubble (overlapping bubbles, e.g. Albert Park / Adelaide).
+    MEASURE _Measures[Circuits] =
+        CONCATENATEX ( VALUES ( dim_circuit[circuit_name] ), dim_circuit[circuit_name], ", ", dim_circuit[circuit_name] )
 
     // ---------------------------------------------------------------- Titles for visuals
     MEASURE _Measures[Selected Season] =
