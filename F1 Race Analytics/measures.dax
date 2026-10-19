@@ -298,13 +298,20 @@ DEFINE
 
     // ---------------------------------------------------------------- LLM narratives
     MEASURE _Measures[Race Recap] =
-        CALCULATE ( MAX ( narr_race[narrative_text] ), narr_race[narrative_type] = "race_recap" )
+        COALESCE (
+            CALCULATE ( MAX ( narr_race[narrative_text] ), narr_race[narrative_type] = "race_recap" ),
+            "No recap for this race yet."
+        )
 
     MEASURE _Measures[Prediction Explanation] =
         CALCULATE ( MAX ( narr_race[narrative_text] ), narr_race[narrative_type] = "prediction" )
 
     MEASURE _Measures[Driver Season Summary] =
-        MAX ( narr_driver_season[narrative_text] )
+        IF (
+            HASONEVALUE ( dim_season[season_year] ) && HASONEVALUE ( dim_driver[driver_id] ),
+            COALESCE ( MAX ( narr_driver_season[narrative_text] ), "No summary for this season yet." ),
+            "Pick one season to read the summary."
+        )
 
     MEASURE _Measures[Narrative Source] =
         VAR m = CALCULATE ( MAX ( narr_race[llm_model] ), narr_race[narrative_type] = "race_recap" )
