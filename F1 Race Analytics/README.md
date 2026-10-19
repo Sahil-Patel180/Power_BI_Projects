@@ -15,9 +15,9 @@ flowchart LR
 | # | Page | What it shows |
 | --- | --- | --- |
 | 1 | Season Overview | Champion (or leader), title-fight line chart, wins and constructors' points |
-| 2 | Driver Profile | Career and season stats, finish distribution, retirement reasons, LLM season summary |
+| 2 | Driver Profile | Career and season stats, finish distribution, retirement reasons, LLM season summary (every driver-season, 1950 on) |
 | 3 | Constructor Profile | Points per season, reliability, driver contribution, pit-crew speed |
-| 4 | Race Detail | Classification, lap chart, grid vs finish, pit stops, LLM race recap |
+| 4 | Race Detail | Classification, lap chart, grid vs finish, pit stops, LLM race recap; drill-through target from Season Overview |
 | 5 | Circuits | Map, overtaking (positions gained) and pit-stop counts per circuit |
 | 6 | Predictions vs Actual | Podium probability vs result, top-3 pick hit rate, calibration |
 | 7 | Model Performance | Every model vs its baseline on the 2023–2024 test seasons |
@@ -39,7 +39,7 @@ Full visual-by-visual spec: [report_pages.md](report_pages.md).
 
 ## Build it
 
-Prerequisites: the warehouse loaded in SQL Server (`F1_DB2`), `python -m f1ml.train --write-back` and the `f1ml.llm.narrate` commands run once (the ml tables can also be empty; those visuals then stay blank), Power BI Desktop (2024 or later, for DAX query view).
+Prerequisites: the warehouse loaded in SQL Server (`F1_DB2`), `python -m f1ml.train --write-back` and the `f1ml.llm.narrate` commands run once (see the f1-analytics-ml README for the full-history loop; the ml tables can also be empty, and the narrative visuals then show a fallback line), Power BI Desktop (2024 or later, for DAX query view and Card (new)).
 
 1. **New report** → File > Options > Current file > Data load: untick *Autodetect new relationships*.
 2. **Parameters**: Transform data > Manage parameters > New: `ServerName` = your SSMS server (e.g. `SAHIL\SQLEXPRESS`), `DatabaseName` = `F1_DB2`.
@@ -60,6 +60,10 @@ Prerequisites: the warehouse loaded in SQL Server (`F1_DB2`), `python -m f1ml.tr
 | Season slicer does not filter driver summaries | Relationship 2 or 3 missing | Add `dim_season` → `agg_driver_season` / `narr_driver_season` |
 | Championship points far too high | A visual sums `championship_points` directly | Use the `[Championship Points]` measure (standings are snapshots) |
 | Predictions page empty | ml tables empty | Run `python -m f1ml.train --write-back` in f1-analytics-ml, then Refresh |
+| "No summary for this season yet." / "No recap for this race yet." | No narrative generated for that driver-season / race | Run `f1ml.llm.narrate` for that season, then Refresh |
+| Drill through missing on the race-winners table | Table lacks the drill-through field | Add `dim_race[race_label]` to the table; Race Detail must have it in its Drill through well |
+| Race Detail blank after drill-through | Race slicer on Race Detail saved with a selection | Clear the slicer, save |
+| Card shows "First circuit_name" | Raw text column in Card (new) | Use the `[Circuit Name]` / `[Race Date]` measures |
 
 ## Model design notes
 
@@ -73,4 +77,4 @@ Prerequisites: the warehouse loaded in SQL Server (`F1_DB2`), `python -m f1ml.tr
 
 ## Data notes
 
-Qualifying data from 1994, pit stops from 1994, lap times from 1996, sprints from 2021. Pre-1994 pole counts use grid position 1 (in `agg_driver_season`). Predictions exist for the test seasons (2023–2024) and the current season's completed races.
+Qualifying data from 1994, pit stops from 1994, lap times from 1996 (earlier races show "n/a (pre-1996)" for best lap), sprints from 2021. Pre-1994 pole counts use grid position 1 (in `agg_driver_season`). Predictions exist for the test seasons (2023–2024) and the current season's completed races. LLM narratives (local `qwen2.5:3b`, fact-checked) cover every driver-season and race from 1950 to the current season; Power Query loads only the latest narrative per driver-season / race, so re-runs never duplicate text.
